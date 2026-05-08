@@ -114,50 +114,34 @@ export async function analyzeText(text, apiKey) {
 }
 
 function extractJson(raw) {
-  // 1. Direct parse
+  // 1. Remove all markdown fences
+  const cleaned = raw.replaceAll('```json', '').replaceAll('```', '');
+  console.log('[JSON] cleaned length:', cleaned.length);
+
+  // 2. Find outermost { ... } boundaries
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  console.log('[JSON] brace positions: start=', start, 'end=', end);
+
+  if (start === -1 || end <= start) {
+    throw new Error(
+      `Kein JSON-Objekt gefunden. Antwortlänge: ${raw.length} Zeichen. ` +
+      `Erste 300 Zeichen: ${raw.slice(0, 300)}`
+    );
+  }
+
+  // 3. Parse the extracted substring
+  const jsonStr = cleaned.slice(start, end + 1);
   try {
-    return JSON.parse(raw);
-  } catch (e1) {
-    console.log('[JSON] Direct parse failed:', e1.message);
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.log('[JSON] Parse failed:', e.message);
+    console.log('[JSON] Last 300 chars:', jsonStr.slice(-300));
+    throw new Error(
+      `JSON-Parsing fehlgeschlagen: ${e.message}. ` +
+      `Antwortlänge: ${raw.length} Zeichen. stop_reason im Console-Log prüfen.`
+    );
   }
-
-  // 2. Strip markdown code fences (```json ... ``` or ``` ... ```)
-  // Use greedy match to capture the full content including nested braces
-  const fenceMatch = raw.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/m) ?? raw.match(/```(?:json)?\s*([\s\S]*)```/);
-  if (fenceMatch) {
-    try {
-      return JSON.parse(fenceMatch[1].trim());
-    } catch (e2) {
-      console.log('[JSON] Fence extraction failed:', e2.message);
-    }
-  }
-
-  // 3. Extract outermost { ... } block
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start !== -1 && end > start) {
-    try {
-      return JSON.parse(raw.slice(start, end + 1));
-    } catch (e3) {
-      console.log('[JSON] Brace extraction failed:', e3.message);
-    }
-  }
-
-  // 4. Truncated response — attempt to salvage by closing open structures
-  if (start !== -1) {
-    const closed = closeJson(raw.slice(start));
-    console.log('[JSON] Attempting salvage, closed string:', closed.slice(-200));
-    try {
-      return JSON.parse(closed);
-    } catch (e4) {
-      console.log('[JSON] Salvage failed:', e4.message);
-    }
-  }
-
-  throw new Error(
-    `JSON-Parsing fehlgeschlagen. stop_reason beachten (ggf. max_tokens erreicht). ` +
-    `Antwortlänge: ${raw.length} Zeichen. Erste 300 Zeichen: ${raw.slice(0, 300)}`
-  );
 }
 
 function closeJson(partial) {
