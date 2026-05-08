@@ -33,10 +33,11 @@ export default function App() {
   function startStepTimer() {
     setAnalyzeStep(0);
     let step = 0;
+    // Two API calls ~10s each — advance every 5s across 5 steps
     stepTimerRef.current = setInterval(() => {
       step = Math.min(step + 1, 4);
       setAnalyzeStep(step);
-    }, 3000);
+    }, 5000);
   }
 
   function stopStepTimer() {
