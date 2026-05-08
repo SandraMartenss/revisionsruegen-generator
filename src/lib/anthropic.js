@@ -107,6 +107,10 @@ export async function analyzeText(text, apiKey) {
   const data = await response.json();
   const content = data.content[0]?.text ?? '';
 
+  console.log('[API] stop_reason:', data.stop_reason);
+  console.log('[API] raw response length:', content.length, 'chars');
+  console.log('[API] raw response:', content);
+
   return extractJson(content);
 }
 
@@ -114,14 +118,18 @@ function extractJson(raw) {
   // 1. Direct parse
   try {
     return JSON.parse(raw);
-  } catch (_) {}
+  } catch (e1) {
+    console.log('[JSON] Direct parse failed:', e1.message);
+  }
 
   // 2. Strip markdown code fences (```json ... ``` or ``` ... ```)
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     try {
       return JSON.parse(fenceMatch[1].trim());
-    } catch (_) {}
+    } catch (e2) {
+      console.log('[JSON] Fence extraction failed:', e2.message);
+    }
   }
 
   // 3. Extract outermost { ... } block
@@ -130,18 +138,25 @@ function extractJson(raw) {
   if (start !== -1 && end > start) {
     try {
       return JSON.parse(raw.slice(start, end + 1));
-    } catch (_) {}
+    } catch (e3) {
+      console.log('[JSON] Brace extraction failed:', e3.message);
+    }
   }
 
   // 4. Truncated response — attempt to salvage by closing open structures
   if (start !== -1) {
+    const closed = closeJson(raw.slice(start));
+    console.log('[JSON] Attempting salvage, closed string:', closed.slice(-200));
     try {
-      return JSON.parse(closeJson(raw.slice(start)));
-    } catch (_) {}
+      return JSON.parse(closed);
+    } catch (e4) {
+      console.log('[JSON] Salvage failed:', e4.message);
+    }
   }
 
   throw new Error(
-    'Die API-Antwort konnte nicht verarbeitet werden. Bitte kürzen Sie den Eingabetext und versuchen Sie es erneut.'
+    `JSON-Parsing fehlgeschlagen. stop_reason beachten (ggf. max_tokens erreicht). ` +
+    `Antwortlänge: ${raw.length} Zeichen. Erste 300 Zeichen: ${raw.slice(0, 300)}`
   );
 }
 
