@@ -37,17 +37,17 @@ Identifiziere Verfahrensfehler, die das Urteil möglicherweise beeinflusst haben
 
 ## Ausgabeformat
 
-Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt — kein erklärender Text, kein Markdown davor oder danach. Nur das JSON-Objekt.
+WICHTIG: Antworte mit REINEM JSON — kein ```json, keine Markdown-Fences, kein erklärender Text. Nur das JSON-Objekt selbst, beginnend mit { und endend mit }.
 
 {
-  "summary": "Knappe Gesamtbewertung (3–5 Sätze): Welche Fehlertypen dominieren, wie ist die Revisionschance insgesamt einzuschätzen?",
+  "summary": "Knappe Gesamtbewertung (2–3 Sätze).",
   "absolute_ruegen": [
     {
       "norm": "§ 338 Nr. X StPO",
-      "bezeichnung": "Prägnante Kurzbezeichnung des Fehlers",
-      "fundstelle": "Wörtliches Zitat oder genaue Seitenangabe/Absatzreferenz aus dem Eingabetext",
-      "ruege_text": "Formal ausformulierter Rügetext im Stil einer Revisionsbegründungsschrift. Beginnt mit der förmlichen Rügeeinleitung, enthält vollständigen Tatsachenvortrag und schließt mit der Darlegung des Verfahrensfehlers. Sprachlich: gehobenes juristisches Deutsch, Nominalstil.",
-      "begruendung": "Rechtliche Begründung mit Nennung einschlägiger BGH-Entscheidungen (Aktenzeichen soweit bekannt) und dogmatischer Einordnung.",
+      "bezeichnung": "Prägnante Kurzbezeichnung",
+      "fundstelle": "Kurzes wörtliches Zitat oder Referenz (max. 1 Satz)",
+      "ruege_text": "Förmlicher Rügetext — MAXIMAL 3 SÄTZE. Beginnt mit 'Es wird gerügt, dass...'. Präzise und auf den Punkt.",
+      "begruendung": "Rechtliche Begründung in 2–3 Sätzen mit einschlägiger BGH-Rechtsprechung.",
       "erfolgsaussicht": "hoch|mittel|gering"
     }
   ],
@@ -55,23 +55,22 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt — kein erklärender Tex
     {
       "norm": "§ 337 StPO i.V.m. § XXX StPO",
       "bezeichnung": "Prägnante Kurzbezeichnung",
-      "fundstelle": "Wörtliches Zitat oder Referenz aus dem Eingabetext",
-      "ruege_text": "Formal ausformulierter Rügetext mit vollständigem Tatsachenvortrag (§ 344 Abs. 2 S. 2 StPO) und Darlegung der Kausalität zwischen Verfahrensfehler und Urteil.",
-      "begruendung": "Rechtliche Begründung einschließlich der erforderlichen Kausalitätsdarlegung (Beruhen des Urteils auf dem Fehler, § 337 Abs. 1 StPO).",
+      "fundstelle": "Kurzes wörtliches Zitat oder Referenz (max. 1 Satz)",
+      "ruege_text": "Förmlicher Rügetext — MAXIMAL 3 SÄTZE. Enthält Tatsachenvortrag und Kausalitätsdarlegung.",
+      "begruendung": "Rechtliche Begründung in 2–3 Sätzen inkl. Kausalitätsdarlegung.",
       "erfolgsaussicht": "hoch|mittel|gering"
     }
   ],
-  "hinweise": [
-    "Strategischer oder taktischer Hinweis für den Revisionsführer (z.B. Fristwahrung, Präklusion, Ergänzungen zum Protokoll)"
-  ]
+  "hinweise": ["Strategischer Hinweis (1 Satz)"]
 }
 
-Wichtige Qualitätsvorgaben:
-- Nur tatsächlich aus dem Text ableitbare Fehler aufnehmen — keine spekulativen Rügen ohne Textgrundlage
-- ruege_text muss die Anforderungen des § 344 Abs. 2 S. 2 StPO (vollständiger Tatsachenvortrag) erfüllen
-- Bei § 338-Rügen: Fehlereinfluss wird vermutet; keine Kausalität nötig
-- Bei § 337-Rügen: Beruhen des Urteils auf dem Fehler muss dargelegt werden
-- Erfolgsaussicht nach realistischen BGH-Maßstäben einschätzen`;
+Qualitätsvorgaben:
+- Nur tatsächlich belegbare Fehler aufnehmen
+- ruege_text: MAXIMAL 3 Sätze pro Rüge — Kürze ist Pflicht
+- begruendung: MAXIMAL 3 Sätze
+- Gesamtantwort muss unter 8.000 Zeichen bleiben
+- Bei § 338: keine Kausalität erforderlich; bei § 337: Beruhen kurz darlegen
+- Erfolgsaussicht nach BGH-Maßstäben`;
 
 export async function analyzeText(text, apiKey) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -123,7 +122,8 @@ function extractJson(raw) {
   }
 
   // 2. Strip markdown code fences (```json ... ``` or ``` ... ```)
-  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  // Use greedy match to capture the full content including nested braces
+  const fenceMatch = raw.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/m) ?? raw.match(/```(?:json)?\s*([\s\S]*)```/);
   if (fenceMatch) {
     try {
       return JSON.parse(fenceMatch[1].trim());
