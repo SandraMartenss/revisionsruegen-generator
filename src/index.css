@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-navy-900 text-cream font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    @apply bg-gold-500 text-navy-900;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-navy-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-navy-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gold-600;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gold-500 hover:bg-gold-400 text-navy-900 font-semibold px-6 py-3 rounded transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply border border-navy-600 hover:border-gold-500 text-cream hover:text-gold-400 px-5 py-2.5 rounded transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-navy-800 border border-navy-700 rounded-lg overflow-hidden;
+  }
+
+  .norm-badge {
+    @apply font-mono text-xs px-2.5 py-1 rounded bg-navy-700 text-gold-400 border border-navy-600;
+  }
+
+  .ruege-block {
+    @apply font-mono text-sm bg-navy-950 border border-navy-700 rounded p-4 leading-relaxed text-cream whitespace-pre-wrap;
+  }
+
+  .section-divider {
+    @apply border-t border-navy-700 my-6;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, #c9a84c 0%, #e8c97a 50%, #c9a84c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Analyzing spinner */
+@keyframes scales-pulse {
+  0%, 100% { transform: rotate(-3deg) scale(1); opacity: 0.8; }
+  50% { transform: rotate(3deg) scale(1.05); opacity: 1; }
+}
+
+.scales-animate {
+  animation: scales-pulse 2s ease-in-out infinite;
+}
+
+/* Card entrance animation */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card-enter {
+  animation: card-in 0.4s ease forwards;
+}
