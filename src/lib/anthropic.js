@@ -84,7 +84,7 @@ export async function analyzeText(text, apiKey) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -107,11 +107,62 @@ export async function analyzeText(text, apiKey) {
   const data = await response.json();
   const content = data.content[0]?.text ?? '';
 
+  return extractJson(content);
+}
+
+function extractJson(raw) {
+  // 1. Direct parse
   try {
-    return JSON.parse(content);
-  } catch (_) {
-    const match = content.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error('Die API-Antwort enthält kein gültiges JSON. Bitte erneut versuchen.');
+    return JSON.parse(raw);
+  } catch (_) {}
+
+  // 2. Strip markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    try {
+      return JSON.parse(fenceMatch[1].trim());
+    } catch (_) {}
   }
+
+  // 3. Extract outermost { ... } block
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    try {
+      return JSON.parse(raw.slice(start, end + 1));
+    } catch (_) {}
+  }
+
+  // 4. Truncated response — attempt to salvage by closing open structures
+  if (start !== -1) {
+    try {
+      return JSON.parse(closeJson(raw.slice(start)));
+    } catch (_) {}
+  }
+
+  throw new Error(
+    'Die API-Antwort konnte nicht verarbeitet werden. Bitte kürzen Sie den Eingabetext und versuchen Sie es erneut.'
+  );
+}
+
+function closeJson(partial) {
+  // Count unclosed braces and brackets, then append closing chars
+  const stack = [];
+  let inString = false;
+  let escape = false;
+
+  for (const ch of partial) {
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+
+  // Remove trailing incomplete string or value
+  let closed = partial.trimEnd();
+  if (closed.endsWith(',')) closed = closed.slice(0, -1);
+
+  return closed + stack.reverse().join('');
 }
